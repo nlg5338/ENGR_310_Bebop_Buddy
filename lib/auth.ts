@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { Pool } from "pg";
+import { db } from "./db.ts";
 
 // On Vercel, fall back to the project's production URL if BETTER_AUTH_URL isn't set.
 const baseURL =
@@ -11,8 +11,7 @@ const baseURL =
 
 export const auth = betterAuth({
   baseURL,
-  // DATABASE_URL is the Neon connection string Vercel added to the project.
-  database: new Pool({ connectionString: process.env.DATABASE_URL }),
+  database: db,
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,

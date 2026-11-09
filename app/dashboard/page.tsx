@@ -42,12 +42,12 @@ async function Dashboard() {
       <p className="lead">You&apos;re logged in as {session.user.email}.</p>
 
       <div className="grid grid-3">
-        <div className="card">
+        <Link href="/practice" className="card">
           <div className="icon">🎼</div>
-          <h3>My progressions</h3>
+          <h3>Solo studio</h3>
           <p>Enter chord changes and get scales, guide tones, and AI-written solos.</p>
-          <p className="coming-soon">Coming soon</p>
-        </div>
+          <p className="card-link">Open the studio →</p>
+        </Link>
         <div className="card">
           <div className="icon">🥁</div>
           <h3>Jam mode</h3>

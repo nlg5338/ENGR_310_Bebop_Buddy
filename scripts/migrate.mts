@@ -1,7 +1,8 @@
-// Creates (or updates) the login tables in the Neon database.
+// Creates (or updates) the login tables and the app's own tables in the Neon database.
 // Run with: npm run db:migrate
 import { getMigrations } from "better-auth/db/migration";
 import { auth } from "../lib/auth.ts";
+import { createAppTables } from "../lib/db.ts";
 
 const { toBeCreated, toBeAdded, runMigrations } = await getMigrations(auth.options);
 
@@ -13,5 +14,8 @@ if (toBeCreated.length === 0 && toBeAdded.length === 0) {
   await runMigrations();
   console.log("Done.");
 }
+
+await createAppTables();
+console.log("App tables are ready.");
 
 process.exit(0);
