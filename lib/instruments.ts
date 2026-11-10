@@ -19,7 +19,7 @@ export const INSTRUMENTS = {
   clarinet: { label: "Clarinet", key: "B♭", clef: "treble", transpose: 2, range: "F3 to B♭5", program: 71 },
   "alto-sax": { label: "Alto Saxophone", key: "E♭", clef: "treble", transpose: 9, range: "E♭3 to G5", program: 65 },
   "tenor-sax": { label: "Tenor Saxophone", key: "B♭", clef: "treble", transpose: 14, range: "B♭2 to D5", program: 66 },
-  "bari-sax": { label: "Baritone Saxophone", key: "E♭", clef: "bass", transpose: 9, range: "E♭2 to G4", program: 67 },
+  "bari-sax": { label: "Baritone Saxophone", key: "E♭", clef: "treble", transpose: 21, range: "E♭2 to G4", program: 67 },
   "f-horn": { label: "F Horn", key: "F", clef: "treble", transpose: 7, range: "F3 to C5", program: 60 },
   trumpet: { label: "Trumpet", key: "B♭", clef: "treble", transpose: 2, range: "B♭3 to G5", program: 56 },
   trombone: { label: "Trombone", key: "C", clef: "bass", transpose: 0, range: "F2 to B♭4", program: 57 },
@@ -37,13 +37,6 @@ export const DEFAULT_INSTRUMENT: InstrumentId = "alto-sax";
 
 export function isInstrument(id: unknown): id is InstrumentId {
   return typeof id === "string" && id in INSTRUMENTS;
-}
-
-/** Shown in the dropdown, e.g. "Trumpet (B♭, treble clef)". */
-export function instrumentOptionLabel(id: InstrumentId): string {
-  const inst: Instrument = INSTRUMENTS[id];
-  if (inst.clef === "perc") return inst.label;
-  return `${inst.label} (${inst.key}, ${inst.clef} clef)`;
 }
 
 // Drum set notation: where each drum sits on the staff (ABC note), its sound, and note head.

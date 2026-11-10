@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   DEFAULT_INSTRUMENT,
   INSTRUMENTS,
-  instrumentOptionLabel,
   isInstrument,
   type InstrumentId,
 } from "@/lib/instruments";
@@ -151,7 +150,7 @@ export function PracticeStudio() {
             <span>Instrument</span>
             <select value={instrument} onChange={(e) => isInstrument(e.target.value) && setInstrument(e.target.value)}>
               {(Object.keys(INSTRUMENTS) as InstrumentId[]).map((id) => (
-                <option key={id} value={id}>{instrumentOptionLabel(id)}</option>
+                <option key={id} value={id}>{INSTRUMENTS[id].label}</option>
               ))}
             </select>
           </label>
