@@ -1,4 +1,8 @@
 import Link from "next/link";
+import { SessionLink } from "./session-link";
+
+const DASHBOARD = { href: "/dashboard", label: "Dashboard" };
+const STUDIO = { href: "/practice", label: "Open the solo studio" };
 
 export default function Home() {
   return (
@@ -13,9 +17,11 @@ export default function Home() {
             <a href="#how">How it works</a>
             <a href="#who">Who it&apos;s for</a>
             <a href="#pricing">Pricing</a>
-            <Link href="/login" className="btn btn-ghost">
-              Log in
-            </Link>
+            <SessionLink
+              loggedIn={DASHBOARD}
+              loggedOut={{ href: "/login", label: "Log in" }}
+              className="btn btn-ghost"
+            />
           </nav>
         </div>
       </header>
@@ -33,9 +39,11 @@ export default function Home() {
               and walks you through lessons from your first chord tones to real bebop lines.
             </p>
             <div className="hero-actions">
-              <Link href="/signup" className="btn btn-primary">
-                Start practicing free
-              </Link>
+              <SessionLink
+                loggedIn={STUDIO}
+                loggedOut={{ href: "/signup", label: "Start practicing free" }}
+                className="btn btn-primary"
+              />
               <a href="#how" className="btn btn-ghost">
                 See how it works
               </a>
@@ -185,7 +193,11 @@ export default function Home() {
                 <li>Backing track player</li>
                 <li>First 2 lessons</li>
               </ul>
-              <Link href="/signup" className="btn btn-ghost">Get started</Link>
+              <SessionLink
+                loggedIn={STUDIO}
+                loggedOut={{ href: "/signup", label: "Get started" }}
+                className="btn btn-ghost"
+              />
             </div>
             <div className="card plan featured">
               <span className="badge">Most popular</span>
@@ -245,7 +257,11 @@ export default function Home() {
         <div className="container">
           <h2>Ready to take your first solo?</h2>
           <p>Your AI jazz partner is warmed up and waiting.</p>
-          <Link href="/signup" className="btn btn-primary">Start practicing free</Link>
+          <SessionLink
+            loggedIn={STUDIO}
+            loggedOut={{ href: "/signup", label: "Start practicing free" }}
+            className="btn btn-primary"
+          />
         </div>
       </section>
 

@@ -11,7 +11,7 @@ export default function PracticePage() {
     <>
       <header className="nav">
         <div className="container">
-          <Link href="/" className="logo">
+          <Link href="/dashboard" className="logo">
             Bebop <span>Buddy</span>
           </Link>
           <nav className="nav-links">

@@ -13,7 +13,7 @@ export default function DashboardPage({ searchParams }: PageProps<"/dashboard">)
     <>
       <header className="nav">
         <div className="container">
-          <Link href="/" className="logo">
+          <Link href="/dashboard" className="logo">
             Bebop <span>Buddy</span>
           </Link>
           <nav className="nav-links">
