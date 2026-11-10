@@ -51,8 +51,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const remaining = await solosRemaining(session.user.id);
-  if (remaining <= 0) {
+  const remaining = await solosRemaining(session.user.id); // null = unlimited (Pro)
+  if (remaining !== null && remaining <= 0) {
     return Response.json(
       { error: "You've used today's free solos. Come back tomorrow, or go Pro for unlimited solos.", analysis },
       { status: 429 },
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   try {
     const solo = await generateSolo(analysis, instrument, level, tempo);
     await recordSolo(session.user.id, progressionText(analysis));
-    return Response.json({ analysis, solo, remaining: remaining - 1 });
+    return Response.json({ analysis, solo, remaining: remaining === null ? null : remaining - 1 });
   } catch (error) {
     console.error("Solo generation failed:", error);
     const message =

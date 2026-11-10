@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "db:migrate": "node --env-file-if-exists=.env.local scripts/migrate.mts",
-    "db:seed-demo": "node --env-file-if-exists=.env.local scripts/seed-demo.mts"
+    "db:seed-demo": "node --env-file-if-exists=.env.local scripts/seed-demo.mts",
+    "stripe:setup": "node --env-file-if-exists=.env.local scripts/stripe-setup.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.7.0",
@@ -19,6 +20,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "stripe": "^23.1.0",
     "tonal": "^6.5.1",
     "zod": "^4.6.7"
   },

@@ -16,11 +16,44 @@ export async function createAppTables() {
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS solo_generation_user_time ON solo_generation (user_id, created_at);
+
+    -- One row per user who has started a checkout; kept in sync with Stripe.
+    CREATE TABLE IF NOT EXISTS subscription (
+      user_id                TEXT PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
+      stripe_customer_id     TEXT UNIQUE NOT NULL,
+      stripe_subscription_id TEXT,
+      status                 TEXT NOT NULL DEFAULT 'none',
+      current_period_end     TIMESTAMPTZ,
+      cancel_at_period_end   BOOLEAN NOT NULL DEFAULT false,
+      updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 }
 
-/** How many solos this user has left in the last 24 hours. */
-export async function solosRemaining(userId: string): Promise<number> {
+export type Plan = {
+  pro: boolean;
+  renewsOrEnds: Date | null;
+  canceling: boolean;
+};
+
+/** Whether the user has an active Pro subscription. */
+export async function getPlan(userId: string): Promise<Plan> {
+  const { rows } = await db.query<{ status: string; current_period_end: Date | null; cancel_at_period_end: boolean }>(
+    `SELECT status, current_period_end, cancel_at_period_end FROM subscription WHERE user_id = $1`,
+    [userId],
+  );
+  const sub = rows[0];
+  return {
+    pro: sub?.status === "active" || sub?.status === "trialing",
+    renewsOrEnds: sub?.current_period_end ?? null,
+    canceling: sub?.cancel_at_period_end ?? false,
+  };
+}
+
+/** How many solos this user has left in the last 24 hours, or null if unlimited (Pro). */
+export async function solosRemaining(userId: string): Promise<number | null> {
+  if ((await getPlan(userId)).pro) return null;
+
   const { rows } = await db.query<{ count: string }>(
     `SELECT count(*) FROM solo_generation WHERE user_id = $1 AND created_at > now() - interval '24 hours'`,
     [userId],

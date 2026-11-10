@@ -32,7 +32,8 @@ export function PracticeStudio() {
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [solo, setSolo] = useState<Solo | null>(null);
-  const [remaining, setRemaining] = useState<number | null>(null);
+  // undefined = not loaded yet, null = unlimited (Pro)
+  const [remaining, setRemaining] = useState<number | null | undefined>(undefined);
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -41,7 +42,7 @@ export function PracticeStudio() {
   useEffect(() => {
     fetch("/api/solo")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => data && setRemaining(data.remaining))
+      .then((data) => data && setRemaining(data.remaining ?? null))
       .catch(() => {});
   }, []);
 
@@ -108,7 +109,7 @@ export function PracticeStudio() {
       });
       const data = await res.json();
       if (data.analysis) setAnalysis(data.analysis);
-      if (typeof data.remaining === "number") setRemaining(data.remaining);
+      if ("remaining" in data) setRemaining(data.remaining);
       if (!res.ok) {
         setError(data.error ?? "Something went wrong.");
         if (res.status === 429) setRemaining(0);
@@ -169,9 +170,11 @@ export function PracticeStudio() {
         <button type="submit" className="btn btn-primary" disabled={loading || remaining === 0}>
           {loading ? "Buddy is writing your solo…" : "Generate solo"}
         </button>
-        {remaining !== null && (
+        {remaining === null && <p className="hint">⭐ Pro: unlimited solos.</p>}
+        {typeof remaining === "number" && (
           <p className="hint">
-            {remaining > 0 ? `${remaining} free solo${remaining === 1 ? "" : "s"} left today.` : "No free solos left today."}
+            {remaining > 0 ? `${remaining} free solo${remaining === 1 ? "" : "s"} left today. ` : "No free solos left today. "}
+            <a href="/dashboard">Go Pro</a> for unlimited solos.
           </p>
         )}
         {error && <div className="form-error">{error}</div>}

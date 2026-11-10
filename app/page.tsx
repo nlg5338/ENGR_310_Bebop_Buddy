@@ -199,7 +199,7 @@ export default function Home() {
                 <li>Personalized feedback from Buddy</li>
                 <li>Cancel anytime</li>
               </ul>
-              <Link href="/signup" className="btn btn-primary">Go Pro</Link>
+              <Link href="/dashboard" className="btn btn-primary">Go Pro</Link>
             </div>
           </div>
           <p className="value-note">
