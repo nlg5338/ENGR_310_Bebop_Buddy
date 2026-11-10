@@ -4,6 +4,7 @@ import { recordSolo, solosRemaining } from "@/lib/db";
 import { analyzeProgression, progressionText } from "@/lib/music";
 import { DEFAULT_INSTRUMENT, isInstrument } from "@/lib/instruments";
 import { generateSolo, LEVELS, type Level } from "@/lib/solo";
+import { cleanSuggestions } from "@/lib/suggestions";
 
 // Writing and checking a solo can take a while (up to two AI calls).
 export const maxDuration = 120;
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
   const instrument = isInstrument(body.instrument) ? body.instrument : DEFAULT_INSTRUMENT;
   const level = (body.level in LEVELS ? body.level : "beginner") as Level;
   const tempo = Math.min(240, Math.max(60, Number(body.tempo) || 120));
+  const suggestions = cleanSuggestions(body.suggestions, instrument === "drums");
 
   const result = analyzeProgression(String(body.progression ?? ""));
   if ("unknown" in result) {
@@ -61,7 +63,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const solo = await generateSolo(analysis, instrument, level, tempo);
+    const solo = await generateSolo(analysis, instrument, level, tempo, suggestions);
     await recordSolo(session.user.id, progressionText(analysis));
     return Response.json({ analysis, solo, remaining: remaining === null ? null : remaining - 1 });
   } catch (error) {

@@ -429,6 +429,11 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
   cursor: pointer;
 }
 .chip:hover { border-color: var(--accent); }
+.chip-on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-dark); }
+.suggestions { margin-top: 4px; }
+.suggestions .hint { margin: 0 0 10px; }
+.adjust { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.adjust .tips-heading { margin-bottom: 10px; }
 .studio-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 
 .studio-heading { font-size: 1.6rem; margin-bottom: 16px; }

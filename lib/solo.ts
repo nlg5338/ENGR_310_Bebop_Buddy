@@ -5,6 +5,7 @@ import abcjs from "abcjs";
 import { z } from "zod";
 import { beamEighthNotes } from "./beaming.ts";
 import { DRUM_KIT, INSTRUMENTS, type InstrumentId } from "./instruments.ts";
+import { SUGGESTIONS, type SuggestionId } from "./suggestions.ts";
 import type { Analysis } from "./music";
 
 // Change this one line to switch models (e.g. "claude-sonnet-5-5" to halve the cost).
@@ -54,7 +55,14 @@ For drum set, write a drum solo instead of a melody: use only the drum notes you
 let client: Anthropic | null = null;
 const getClient = () => (client ??= new Anthropic());
 
-function buildPrompt(analysis: Analysis, instrument: InstrumentId, level: Level): string {
+function buildPrompt(analysis: Analysis, instrument: InstrumentId, level: Level, suggestions: SuggestionId[]): string {
+  // The student's picks from the suggestion chips; these take priority over the level guidance.
+  const requests = suggestions.length
+    ? `\n\nThe student asked for these changes (follow them, even over the level guidance):\n${suggestions
+        .map((id) => `- ${SUGGESTIONS[id].instruction}`)
+        .join("\n")}`
+    : "";
+
   if (instrument === "drums") {
     const form = analysis.bars
       .map((bar, i) => `Bar ${i + 1}: ${bar.map((c) => c.symbol).join(" then ")}`)
@@ -64,7 +72,7 @@ function buildPrompt(analysis: Analysis, instrument: InstrumentId, level: Level)
 
 Drum notes to use (and no others): ${kit}.
 
-Level guidance: ${DRUM_LEVELS[level]}
+Level guidance: ${DRUM_LEVELS[level]}${requests}
 
 The form (put each chord symbol where it starts, like a lead sheet):
 ${form}`;
@@ -82,7 +90,7 @@ ${form}`;
   const inst = INSTRUMENTS[instrument];
   return `Write a ${analysis.bars.length}-bar example solo for ${inst.label} at ${level} level. Keep it within ${inst.range} (concert pitch, ABC octave: C = middle C, c = the C above, C, = the C below).
 
-Level guidance: ${LEVELS[level]}
+Level guidance: ${LEVELS[level]}${requests}
 
 The progression, with the correct theory for each chord (use these notes):
 ${bars}`;
@@ -144,9 +152,10 @@ export async function generateSolo(
   instrument: InstrumentId,
   level: Level,
   tempo: number,
+  suggestions: SuggestionId[] = [],
 ): Promise<Solo> {
   const messages: Anthropic.Beta.BetaMessageParam[] = [
-    { role: "user", content: buildPrompt(analysis, instrument, level) },
+    { role: "user", content: buildPrompt(analysis, instrument, level, suggestions) },
   ];
 
   for (let attempt = 1; attempt <= 2; attempt++) {

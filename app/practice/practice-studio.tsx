@@ -9,6 +9,7 @@ import {
   type InstrumentId,
 } from "@/lib/instruments";
 import { transposeAnalysis, type Analysis } from "@/lib/music";
+import { MAX_SUGGESTIONS, SUGGESTIONS, suggestionsFor, type Suggestion, type SuggestionId } from "@/lib/suggestions";
 
 // `instrument` is the one the solo was written for, so changing the dropdown
 // afterwards doesn't re-transpose an existing solo.
@@ -32,6 +33,23 @@ export function PracticeStudio() {
   const [solo, setSolo] = useState<Solo | null>(null);
   // undefined = not loaded yet, null = unlimited (Pro)
   const [remaining, setRemaining] = useState<number | null | undefined>(undefined);
+  const [picked, setPicked] = useState<SuggestionId[]>([]);
+
+  // Only the suggestions that fit the chosen instrument (melody or drums) count.
+  const available = suggestionsFor(instrument === "drums");
+  const activeSuggestions = picked.filter((id) => available.includes(id));
+
+  function toggleSuggestion(id: SuggestionId) {
+    setPicked((current) => {
+      const active = current.filter((p) => available.includes(p));
+      if (active.includes(id)) return active.filter((p) => p !== id);
+      // Picking one removes any that contradict it (e.g. "More space" vs "Busier lines").
+      const suggestion: Suggestion = SUGGESTIONS[id];
+      const conflicts = suggestion.conflicts ?? [];
+      const kept = active.filter((p) => !conflicts.includes(p));
+      return kept.length >= MAX_SUGGESTIONS ? kept : [...kept, id];
+    });
+  }
 
   const sheetRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<HTMLDivElement>(null);
@@ -96,8 +114,12 @@ export function PracticeStudio() {
     };
   }, [solo]);
 
-  async function handleGenerate(event: React.FormEvent) {
+  function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    generate();
+  }
+
+  async function generate() {
     setLoading(true);
     setError("");
     setSolo(null);
@@ -106,7 +128,7 @@ export function PracticeStudio() {
       const res = await fetch("/api/solo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ progression, instrument, level, tempo }),
+        body: JSON.stringify({ progression, instrument, level, tempo, suggestions: activeSuggestions }),
       });
       const data = await res.json();
       if (data.analysis) setAnalysis({ analysis: data.analysis, instrument });
@@ -126,7 +148,7 @@ export function PracticeStudio() {
 
   return (
     <div className="studio">
-      <form className="card studio-form" onSubmit={handleGenerate}>
+      <form className="card studio-form" onSubmit={handleSubmit}>
         <label className="field">
           <span>Chord progression</span>
           <input
@@ -167,6 +189,8 @@ export function PracticeStudio() {
             <input type="range" min={60} max={240} step={5} value={tempo} onChange={(e) => setTempo(Number(e.target.value))} />
           </label>
         </div>
+
+        <SuggestionChips available={available} active={activeSuggestions} onToggle={toggleSuggestion} />
 
         <button type="submit" className="btn btn-primary" disabled={loading || remaining === 0}>
           {loading ? "Buddy is writing your solo…" : "Generate solo"}
@@ -222,8 +246,45 @@ export function PracticeStudio() {
               <li key={tip}>{tip}</li>
             ))}
           </ul>
+
+          <div className="adjust">
+            <h3 className="tips-heading">Not quite right? Adjust it</h3>
+            <SuggestionChips available={available} active={activeSuggestions} onToggle={toggleSuggestion} />
+            <button type="button" className="btn btn-primary" onClick={generate} disabled={loading || remaining === 0}>
+              {activeSuggestions.length ? "Write a new solo with these changes" : "Write a new solo"}
+            </button>
+          </div>
         </section>
       )}
+    </div>
+  );
+}
+
+/** The clickable suggestion buttons ("Use more space", "Less scales", ...). */
+function SuggestionChips({ available, active, onToggle }: {
+  available: SuggestionId[];
+  active: SuggestionId[];
+  onToggle: (id: SuggestionId) => void;
+}) {
+  return (
+    <div className="suggestions">
+      <p className="hint">
+        Suggestions (optional): pick up to {MAX_SUGGESTIONS} to shape the next solo.
+      </p>
+      <div className="presets">
+        {available.map((id) => (
+          <button
+            key={id}
+            type="button"
+            className={`chip${active.includes(id) ? " chip-on" : ""}`}
+            aria-pressed={active.includes(id)}
+            onClick={() => onToggle(id)}
+          >
+            {active.includes(id) ? "✓ " : ""}
+            {SUGGESTIONS[id].label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
