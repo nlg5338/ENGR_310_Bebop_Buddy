@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { getStripe, syncCustomer } from "@/lib/billing";
-import { FREE_DAILY_SOLOS, getPlan } from "@/lib/db";
+import { db, FREE_DAILY_SOLOS, getPlan } from "@/lib/db";
 import { BillingButton } from "./billing-button";
 import { SignOutButton } from "./sign-out-button";
 
@@ -38,17 +38,25 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/dashboard
 
   // Coming back from Stripe Checkout: confirm the payment right away instead of
   // waiting for the webhook.
-  const { checkout, session_id } = await searchParams;
+  const { checkout, session_id, billing } = await searchParams;
   if (checkout === "success" && typeof session_id === "string") {
     const completed = await getStripe().checkout.sessions.retrieve(session_id);
     if (completed.client_reference_id === session.user.id && typeof completed.customer === "string") {
       await syncCustomer(completed.customer);
     }
   }
+  // Coming back from the billing portal (e.g. after canceling): refresh from Stripe.
+  if (billing === "updated") {
+    const { rows } = await db.query<{ stripe_customer_id: string }>(
+      `SELECT stripe_customer_id FROM subscription WHERE user_id = $1`,
+      [session.user.id],
+    );
+    if (rows[0]) await syncCustomer(rows[0].stripe_customer_id);
+  }
 
   const plan = await getPlan(session.user.id);
   const firstName = session.user.name.split(" ")[0] || "there";
-  const endDate = plan.renewsOrEnds?.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const endDate = plan.renewsOrEnds?.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
 
   return (
     <main className="dashboard container">

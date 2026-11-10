@@ -32,7 +32,9 @@ export async function getOrCreateCustomer(user: { id: string; email: string; nam
 export async function syncCustomer(customerId: string) {
   const { data } = await getStripe().subscriptions.list({ customer: customerId, status: "all", limit: 1 });
   const sub = data[0];
-  const periodEnd = sub?.items.data[0]?.current_period_end;
+  // A scheduled cancellation shows up as `cancel_at` (newer API) or `cancel_at_period_end`.
+  const canceling = Boolean(sub && (sub.cancel_at_period_end || sub.cancel_at));
+  const periodEnd = sub?.cancel_at ?? sub?.items.data[0]?.current_period_end;
 
   await db.query(
     `UPDATE subscription
@@ -47,7 +49,7 @@ export async function syncCustomer(customerId: string) {
       sub?.id ?? null,
       sub?.status ?? "none",
       periodEnd ? new Date(periodEnd * 1000) : null,
-      sub?.cancel_at_period_end ?? false,
+      canceling,
     ],
   );
 }
