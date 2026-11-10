@@ -3,7 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import abcjs from "abcjs";
 import { z } from "zod";
-import { DRUM_KIT, INSTRUMENTS, type InstrumentId } from "./instruments";
+import { beamEighthNotes } from "./beaming.ts";
+import { DRUM_KIT, INSTRUMENTS, type InstrumentId } from "./instruments.ts";
 import type { Analysis } from "./music";
 
 // Change this one line to switch models (e.g. "claude-sonnet-5-5" to halve the cost).
@@ -168,7 +169,7 @@ export async function generateSolo(
 
     const abc = toAbc(parsed.abc_body, instrument, tempo);
     const problem = checkAbc(abc, analysis.bars.length);
-    if (!problem) return { ...parsed, abc };
+    if (!problem) return { ...parsed, abc: beamEighthNotes(abc) };
 
     // Show Claude what was wrong and let it fix the solo once.
     messages.push(
