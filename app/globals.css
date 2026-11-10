@@ -432,6 +432,7 @@ a.card:hover { border-color: var(--accent); transform: translateY(-2px); }
 .studio-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 
 .studio-heading { font-size: 1.6rem; margin-bottom: 16px; }
+.transpose-note { margin: -6px 0 12px; }
 .analysis-table { display: grid; font-size: 0.95rem; }
 .analysis-row {
   display: grid;

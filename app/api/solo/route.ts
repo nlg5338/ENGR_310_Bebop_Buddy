@@ -2,7 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { auth } from "@/lib/auth";
 import { recordSolo, solosRemaining } from "@/lib/db";
 import { analyzeProgression, progressionText } from "@/lib/music";
-import { generateSolo, INSTRUMENTS, LEVELS, type Instrument, type Level } from "@/lib/solo";
+import { DEFAULT_INSTRUMENT, isInstrument } from "@/lib/instruments";
+import { generateSolo, LEVELS, type Level } from "@/lib/solo";
 
 // Writing and checking a solo can take a while (up to two AI calls).
 export const maxDuration = 120;
@@ -22,7 +23,7 @@ export async function POST(request: Request) {
   if (!session) return Response.json({ error: "Please log in." }, { status: 401 });
 
   const body = await request.json().catch(() => ({}));
-  const instrument = (body.instrument in INSTRUMENTS ? body.instrument : "sax") as Instrument;
+  const instrument = isInstrument(body.instrument) ? body.instrument : DEFAULT_INSTRUMENT;
   const level = (body.level in LEVELS ? body.level : "beginner") as Level;
   const tempo = Math.min(240, Math.max(60, Number(body.tempo) || 120));
 

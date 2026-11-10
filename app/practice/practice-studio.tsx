@@ -2,9 +2,18 @@
 
 import "abcjs/abcjs-audio.css";
 import { useEffect, useRef, useState } from "react";
-import type { Analysis } from "@/lib/music";
+import {
+  DEFAULT_INSTRUMENT,
+  INSTRUMENTS,
+  instrumentOptionLabel,
+  isInstrument,
+  type InstrumentId,
+} from "@/lib/instruments";
+import { transposeAnalysis, type Analysis } from "@/lib/music";
 
-type Solo = { abc: string; explanation: string; practice_tips: string[] };
+// `instrument` is the one the solo was written for, so changing the dropdown
+// afterwards doesn't re-transpose an existing solo.
+type Solo = { abc: string; explanation: string; practice_tips: string[]; instrument: InstrumentId };
 
 const PRESETS = [
   { label: "ii–V–I in C", chords: "Dm7 | G7 | Cmaj7 | Cmaj7" },
@@ -13,24 +22,14 @@ const PRESETS = [
   { label: "Turnaround in Bb", chords: "Bbmaj7 G7 | Cm7 F7 | Bbmaj7 G7 | Cm7 F7" },
 ];
 
-const INSTRUMENT_OPTIONS = [
-  { value: "sax", label: "Saxophone", program: 65 },
-  { value: "trumpet", label: "Trumpet", program: 56 },
-  { value: "piano", label: "Piano", program: 0 },
-  { value: "guitar", label: "Guitar", program: 26 },
-  { value: "flute", label: "Flute", program: 73 },
-  { value: "trombone", label: "Trombone", program: 57 },
-  { value: "bass", label: "Bass", program: 32 },
-];
-
 export function PracticeStudio() {
   const [progression, setProgression] = useState(PRESETS[0].chords);
-  const [instrument, setInstrument] = useState("sax");
+  const [instrument, setInstrument] = useState<InstrumentId>(DEFAULT_INSTRUMENT);
   const [level, setLevel] = useState("beginner");
   const [tempo, setTempo] = useState(120);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [analysis, setAnalysis] = useState<{ analysis: Analysis; instrument: InstrumentId } | null>(null);
   const [solo, setSolo] = useState<Solo | null>(null);
   // undefined = not loaded yet, null = unlimited (Pro)
   const [remaining, setRemaining] = useState<number | null | undefined>(undefined);
@@ -50,16 +49,19 @@ export function PracticeStudio() {
   useEffect(() => {
     if (!solo || !sheetRef.current || !playerRef.current) return;
     let cancelled = false;
-    const program = INSTRUMENT_OPTIONS.find((i) => i.value === instrument)?.program ?? 0;
+    const { program, transpose } = INSTRUMENTS[solo.instrument];
 
     (async () => {
       const abcjs = (await import("abcjs")).default;
       if (cancelled || !sheetRef.current || !playerRef.current) return;
 
+      // visualTranspose shows the part in the instrument's key; playback still
+      // sounds at concert pitch so it matches the chords.
       const [visualObj] = abcjs.renderAbc(sheetRef.current, solo.abc, {
         responsive: "resize",
         add_classes: true,
         paddingtop: 0,
+        visualTranspose: transpose,
       });
 
       if (!abcjs.synth.supportsAudio()) {
@@ -93,7 +95,7 @@ export function PracticeStudio() {
     return () => {
       cancelled = true;
     };
-  }, [solo, instrument]);
+  }, [solo]);
 
   async function handleGenerate(event: React.FormEvent) {
     event.preventDefault();
@@ -108,14 +110,14 @@ export function PracticeStudio() {
         body: JSON.stringify({ progression, instrument, level, tempo }),
       });
       const data = await res.json();
-      if (data.analysis) setAnalysis(data.analysis);
+      if (data.analysis) setAnalysis({ analysis: data.analysis, instrument });
       if ("remaining" in data) setRemaining(data.remaining);
       if (!res.ok) {
         setError(data.error ?? "Something went wrong.");
         if (res.status === 429) setRemaining(0);
         return;
       }
-      setSolo(data.solo);
+      setSolo({ ...data.solo, instrument });
     } catch {
       setError("Couldn't reach the server. Check your connection and try again.");
     } finally {
@@ -147,9 +149,9 @@ export function PracticeStudio() {
         <div className="studio-options">
           <label className="field">
             <span>Instrument</span>
-            <select value={instrument} onChange={(e) => setInstrument(e.target.value)}>
-              {INSTRUMENT_OPTIONS.map((i) => (
-                <option key={i.value} value={i.value}>{i.label}</option>
+            <select value={instrument} onChange={(e) => isInstrument(e.target.value) && setInstrument(e.target.value)}>
+              {(Object.keys(INSTRUMENTS) as InstrumentId[]).map((id) => (
+                <option key={id} value={id}>{instrumentOptionLabel(id)}</option>
               ))}
             </select>
           </label>
@@ -180,14 +182,20 @@ export function PracticeStudio() {
         {error && <div className="form-error">{error}</div>}
       </form>
 
-      {analysis && (
+      {analysis && analysis.instrument !== "drums" && (
         <section className="card">
           <h2 className="studio-heading">What to play</h2>
+          {INSTRUMENTS[analysis.instrument].transpose % 12 !== 0 && (
+            <p className="hint transpose-note">
+              Shown in {INSTRUMENTS[analysis.instrument].key} for {INSTRUMENTS[analysis.instrument].label}, to match your
+              part. Buddy&apos;s explanation below uses concert pitch.
+            </p>
+          )}
           <div className="analysis-table">
             <div className="analysis-row analysis-head">
               <span>Bar</span><span>Chord</span><span>Scale</span><span>Guide tones</span>
             </div>
-            {analysis.bars.flatMap((bar, i) =>
+            {transposeAnalysis(analysis.analysis, INSTRUMENTS[analysis.instrument].transpose).bars.flatMap((bar, i) =>
               bar.map((c, j) => (
                 <div className="analysis-row" key={`${i}-${j}`}>
                   <span>{j === 0 ? i + 1 : ""}</span>

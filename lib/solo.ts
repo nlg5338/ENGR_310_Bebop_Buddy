@@ -3,20 +3,11 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import abcjs from "abcjs";
 import { z } from "zod";
+import { DRUM_KIT, INSTRUMENTS, type InstrumentId } from "./instruments";
 import type { Analysis } from "./music";
 
 // Change this one line to switch models (e.g. "claude-sonnet-5-5" to halve the cost).
 export const SOLO_MODEL = "claude-opus-5-5";
-
-export const INSTRUMENTS = {
-  sax: { label: "Saxophone", range: "D4 to A5", clef: "treble" },
-  trumpet: { label: "Trumpet", range: "C4 to G5", clef: "treble" },
-  piano: { label: "Piano (right hand)", range: "C4 to C6", clef: "treble" },
-  guitar: { label: "Guitar", range: "E3 to E5", clef: "treble" },
-  flute: { label: "Flute", range: "C4 to C6", clef: "treble" },
-  trombone: { label: "Trombone", range: "E2 to F4", clef: "bass" },
-  bass: { label: "Bass", range: "E2 to E4", clef: "bass" },
-} as const;
 
 export const LEVELS = {
   beginner: "Mostly quarter and eighth notes, mostly chord tones, land on guide tones (3rds and 7ths) on beat 1, leave space with rests.",
@@ -24,7 +15,12 @@ export const LEVELS = {
   advanced: "Flowing bebop eighth-note lines with enclosures, chromatic passing tones, an occasional triplet, and phrases that cross bar lines.",
 } as const;
 
-export type Instrument = keyof typeof INSTRUMENTS;
+const DRUM_LEVELS: Record<Level, string> = {
+  beginner: "Keep a steady swing ride pattern with hi-hat (foot) on 2 and 4, and add simple snare and kick answers. Use quarter and eighth notes, with one short fill at the end.",
+  intermediate: "Mix time-keeping with short fills on snare and toms, place kick and snare accents to mark where the chords change, and use an occasional triplet.",
+  advanced: "A melodic solo that moves around the kit: phrases that cross bar lines, triplet fills across the toms, syncopated kick and snare figures, and a crash to mark the top of the form.",
+};
+
 export type Level = keyof typeof LEVELS;
 
 const SoloSchema = z.object({
@@ -48,12 +44,31 @@ Rules for the ABC:
 - Separate bars with | and end the final bar with |].
 - Write the music as original material. Never quote a melody from an existing song.
 
-In the explanation and tips, refer to the specific chords and notes in this progression.`;
+In the explanation and tips, refer to the specific chords and notes in this progression.
+
+Always write pitches at concert pitch (how they sound), in the octave the instrument plays. The app transposes the sheet music for B♭, E♭, and F instruments, so never transpose it yourself.
+
+For drum set, write a drum solo instead of a melody: use only the drum notes you're given (several can sound together, like [F^f]2), keep the same bar and chord-symbol rules so the drummer can follow the form, and explain the solo in terms of the form and the drums, not scales.`;
 
 let client: Anthropic | null = null;
 const getClient = () => (client ??= new Anthropic());
 
-function buildPrompt(analysis: Analysis, instrument: Instrument, level: Level): string {
+function buildPrompt(analysis: Analysis, instrument: InstrumentId, level: Level): string {
+  if (instrument === "drums") {
+    const form = analysis.bars
+      .map((bar, i) => `Bar ${i + 1}: ${bar.map((c) => c.symbol).join(" then ")}`)
+      .join("\n");
+    const kit = DRUM_KIT.map((d) => `${d.note} = ${d.name}`).join(", ");
+    return `Write a ${analysis.bars.length}-bar example drum set solo over this form at ${level} level, in a medium swing feel.
+
+Drum notes to use (and no others): ${kit}.
+
+Level guidance: ${DRUM_LEVELS[level]}
+
+The form (put each chord symbol where it starts, like a lead sheet):
+${form}`;
+  }
+
   const bars = analysis.bars
     .map((bar, i) => {
       const chords = bar
@@ -64,7 +79,7 @@ function buildPrompt(analysis: Analysis, instrument: Instrument, level: Level): 
     .join("\n");
 
   const inst = INSTRUMENTS[instrument];
-  return `Write a ${analysis.bars.length}-bar example solo for ${inst.label} (written range ${inst.range}, ${inst.clef} clef) at ${level} level.
+  return `Write a ${analysis.bars.length}-bar example solo for ${inst.label} at ${level} level. Keep it within ${inst.range} (concert pitch, ABC octave: C = middle C, c = the C above, C, = the C below).
 
 Level guidance: ${LEVELS[level]}
 
@@ -111,15 +126,21 @@ export function checkAbc(abc: string, expectedBars: number): string | null {
   return null;
 }
 
-function toAbc(body: string, instrument: Instrument, tempo: number): string {
-  const clef = INSTRUMENTS[instrument].clef === "bass" ? " clef=bass" : "";
-  return `X:1\nT:Bebop Buddy solo\nM:4/4\nL:1/8\nQ:1/4=${tempo}\nK:C${clef}\n${body.trim()}\n`;
+function toAbc(body: string, instrument: InstrumentId, tempo: number): string {
+  const { clef, label } = INSTRUMENTS[instrument];
+  // Drums: tell abcjs which drum sound (and x note head for cymbals) each staff position means.
+  const drumMap =
+    clef === "perc"
+      ? DRUM_KIT.map((d) => `%%percmap ${d.note} ${d.sound}${d.head ? ` ${d.head}` : ""}\n`).join("")
+      : "";
+  const clefParam = clef === "treble" ? "" : ` clef=${clef}`;
+  return `X:1\nT:Bebop Buddy solo\nC:${label}\nM:4/4\nL:1/8\nQ:1/4=${tempo}\n${drumMap}K:C${clefParam}\n${body.trim()}\n`;
 }
 
 /** Asks Claude for a solo, checks it, and retries once with the problem if it's invalid. */
 export async function generateSolo(
   analysis: Analysis,
-  instrument: Instrument,
+  instrument: InstrumentId,
   level: Level,
   tempo: number,
 ): Promise<Solo> {

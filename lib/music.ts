@@ -1,4 +1,4 @@
-import { Chord, Note, Scale } from "tonal";
+import { Chord, Interval, Note, Scale } from "tonal";
 
 export type ChordInfo = {
   symbol: string;
@@ -86,6 +86,31 @@ export function analyzeProgression(input: string): { analysis: Analysis } | { un
 
   if (unknown.length > 0) return { unknown };
   return { analysis: { bars } };
+}
+
+/**
+ * Shows the analysis in a transposing instrument's key (e.g. +2 half steps for B♭),
+ * so the table matches that player's sheet music. Octave shifts change nothing.
+ */
+export function transposeAnalysis(analysis: Analysis, semitones: number): Analysis {
+  if (semitones % 12 === 0) return analysis;
+  const interval = Interval.fromSemitones(semitones % 12);
+  const up = (note: string) => Note.simplify(Note.transpose(note, interval));
+
+  return {
+    bars: analysis.bars.map((bar) =>
+      bar.map((c) => {
+        const [tonic, ...scaleName] = c.scale.split(" ");
+        return {
+          symbol: Chord.transpose(c.symbol, interval),
+          scale: `${up(tonic)} ${scaleName.join(" ")}`,
+          scaleNotes: c.scaleNotes.map(up),
+          chordTones: c.chordTones.map(up),
+          guideTones: c.guideTones.map(up),
+        };
+      }),
+    ),
+  };
 }
 
 /** Rebuilds the progression as text, e.g. "Dm7 | G7 | Cmaj7". */
