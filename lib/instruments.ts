@@ -17,6 +17,7 @@ export type Instrument = {
 export const INSTRUMENTS = {
   flute: { label: "Flute", key: "C", clef: "treble", transpose: 0, range: "D4 to G6", program: 73 },
   clarinet: { label: "Clarinet", key: "B♭", clef: "treble", transpose: 2, range: "F3 to B♭5", program: 71 },
+  "soprano-sax": { label: "Soprano Saxophone", key: "B♭", clef: "treble", transpose: 2, range: "A♭3 to C6", program: 64 },
   "alto-sax": { label: "Alto Saxophone", key: "E♭", clef: "treble", transpose: 9, range: "E♭3 to G5", program: 65 },
   "tenor-sax": { label: "Tenor Saxophone", key: "B♭", clef: "treble", transpose: 14, range: "B♭2 to D5", program: 66 },
   "bari-sax": { label: "Baritone Saxophone", key: "E♭", clef: "treble", transpose: 21, range: "E♭2 to G4", program: 67 },
